@@ -79,14 +79,15 @@ export default function ChatPage() {
   // 今日の記録を共有するクイックアクション
   function shareTodayRecord() {
     if (!todayRecord) {
-      send("今日の記録をまだつけてないんやけど、何すればいい？");
+      send("今日の記録をまだつけてないけど、今日は何すればいい？");
       return;
     }
-    const summary = `今日の報告です！
-撮影：${todayRecord.shootingCount}件
-マッチ：${todayRecord.matchCount}人
-トレーニング：${todayRecord.training ? `あり（${todayRecord.trainingNote || "記録なし"}）` : "なし"}
-${todayRecord.weight ? `体重：${todayRecord.weight}kg` : ""}
+    const parts = todayRecord.trainingParts ?? [];
+    const summary = `今日の報告！
+${todayRecord.weight ? `体重：${todayRecord.weight}kg` : "体重：未記録"}
+トレーニング：${todayRecord.training ? `あり（部位：${parts.length > 0 ? parts.join("・") : "未記録"}　${todayRecord.trainingNote || ""}）` : "なし"}
+食事：${todayRecord.meals || "未記録"}
+肌の調子：${todayRecord.skinCondition ? `${todayRecord.skinCondition}/5` : "未記録"}
 ${todayRecord.note ? `メモ：${todayRecord.note}` : ""}
 
 アドバイスください！`;
@@ -95,9 +96,9 @@ ${todayRecord.note ? `メモ：${todayRecord.note}` : ""}
 
   const quickActions = [
     { label: "📊 今日の記録を共有", action: shareTodayRecord },
-    { label: "💪 筋トレメニュー", action: () => send("今日の筋トレメニューを教えて") },
-    { label: "📈 SNS伸ばすには", action: () => send("Xフォロワーを増やすために今週やるべきことを教えて") },
-    { label: "📸 撮影件数を増やしたい", action: () => send("撮影件数を増やすための具体的なアクションを教えて") },
+    { label: "💪 今日のトレーニング", action: () => send("今日は何の部位を鍛えればいい？具体的なメニューを教えて") },
+    { label: "🍱 今日の食事プラン", action: () => send("今日1日何を食べればいい？朝昼晩と間食を具体的に教えて") },
+    { label: "✨ 美肌のための食事", action: () => send("肌をきれいにするために今週意識して食べるべきものを教えて") },
   ];
 
   return (

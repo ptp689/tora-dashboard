@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
-  Camera, Dumbbell, Scale, Heart,
+  Dumbbell, Scale, Flame, TrendingDown,
   TrendingUp, MessageCircle, Plus, ChevronRight
 } from "lucide-react";
 import {
@@ -27,16 +27,24 @@ export default function Dashboard() {
   const chartData = [...records]
     .reverse()
     .slice(-14)
+    .filter((r) => r.weight !== null)
     .map((r) => ({
       date: r.date.slice(5),
-      撮影: r.shootingCount,
-      マッチ: r.matchCount,
+      体重: r.weight,
     }));
 
-  const totalShooting = records.reduce((s, r) => s + r.shootingCount, 0);
-  const totalMatch = records.reduce((s, r) => s + r.matchCount, 0);
   const trainingDays = records.filter((r) => r.training).length;
   const latestWeight = records.find((r) => r.weight !== null)?.weight;
+  const prevWeight = records.filter((r) => r.weight !== null)[1]?.weight;
+  const weightDiff = latestWeight && prevWeight ? +(latestWeight - prevWeight).toFixed(1) : null;
+
+  // 連続トレーニング日数
+  let streak = 0;
+  const sortedDates = [...records].sort((a, b) => b.date.localeCompare(a.date));
+  for (const r of sortedDates) {
+    if (r.training) streak++;
+    else break;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 pb-24">
@@ -58,8 +66,8 @@ export default function Dashboard() {
             </p>
             {todayRecord && (
               <p className="text-xs text-orange-400 mt-1">
-                撮影{todayRecord.shootingCount}件　マッチ{todayRecord.matchCount}人
-                {todayRecord.training ? "　💪トレあり" : ""}
+                {todayRecord.training ? `💪 ${(todayRecord.trainingParts ?? []).join("・") || "トレあり"}` : "トレなし"}
+                {todayRecord.weight ? `　${todayRecord.weight}kg` : ""}
               </p>
             )}
           </div>
@@ -74,40 +82,41 @@ export default function Dashboard() {
 
       {/* KPI カード */}
       <div className="px-5 grid grid-cols-2 gap-3 mb-5">
-        <StatCard icon={<Camera size={18} />} label="撮影合計（30日）" value={`${totalShooting}件`} color="orange" />
-        <StatCard icon={<Heart size={18} />} label="マッチ合計（30日）" value={`${totalMatch}人`} color="pink" />
-        <StatCard icon={<Dumbbell size={18} />} label="トレーニング日数" value={`${trainingDays}日`} color="green" />
         <StatCard icon={<Scale size={18} />} label="最新体重" value={latestWeight ? `${latestWeight}kg` : "未記録"} color="blue" />
+        <StatCard
+          icon={weightDiff !== null ? (weightDiff <= 0 ? <TrendingDown size={18} /> : <TrendingUp size={18} />) : <TrendingDown size={18} />}
+          label="前回比"
+          value={weightDiff !== null ? `${weightDiff > 0 ? "+" : ""}${weightDiff}kg` : "---"}
+          color={weightDiff !== null && weightDiff <= 0 ? "green" : "pink"}
+        />
+        <StatCard icon={<Dumbbell size={18} />} label="トレーニング日数（30日）" value={`${trainingDays}日`} color="orange" />
+        <StatCard icon={<Flame size={18} />} label="連続トレーニング" value={`${streak}日`} color="green" />
       </div>
 
-      {/* グラフ */}
+      {/* 体重グラフ */}
       {chartData.length > 1 && (
         <div className="mx-5 mb-5 bg-slate-900 rounded-2xl p-4">
           <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={16} className="text-orange-400" />
-            <p className="text-sm font-medium text-slate-200">推移グラフ（14日）</p>
+            <TrendingDown size={16} className="text-blue-400" />
+            <p className="text-sm font-medium text-slate-200">体重推移（14日）</p>
           </div>
           <ResponsiveContainer width="100%" height={150}>
             <AreaChart data={chartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
               <defs>
-                <linearGradient id="gOrange" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="gPink" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ec4899" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#ec4899" stopOpacity={0} />
+                <linearGradient id="gBlue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
               <XAxis dataKey="date" tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "#64748b", fontSize: 10 }} axisLine={false} tickLine={false} domain={["auto", "auto"]} />
               <Tooltip
                 contentStyle={{ background: "#1e293b", border: "none", borderRadius: 8, fontSize: 12 }}
                 labelStyle={{ color: "#94a3b8" }}
+                formatter={(v) => [`${v}kg`, "体重"]}
               />
-              <Area type="monotone" dataKey="撮影" stroke="#f97316" strokeWidth={2} fill="url(#gOrange)" dot={false} />
-              <Area type="monotone" dataKey="マッチ" stroke="#ec4899" strokeWidth={2} fill="url(#gPink)" dot={false} />
+              <Area type="monotone" dataKey="体重" stroke="#3b82f6" strokeWidth={2} fill="url(#gBlue)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -124,9 +133,8 @@ export default function Dashboard() {
                   <div>
                     <p className="text-xs text-slate-400">{formatDate(r.date)}</p>
                     <p className="text-sm text-white mt-0.5">
-                      撮影{r.shootingCount}件　マッチ{r.matchCount}人
-                      {r.training ? "　💪" : ""}
-                      {r.weight ? `　${r.weight}kg` : ""}
+                      {r.training ? `💪 ${(r.trainingParts ?? []).join("・") || "トレあり"}` : "トレなし"}
+                      {r.weight ? `　⚖️${r.weight}kg` : ""}
                     </p>
                   </div>
                   <ChevronRight size={16} className="text-slate-600" />
